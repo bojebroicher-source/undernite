@@ -49,5 +49,36 @@ export class Sfx {
   pickup() { this.tone(660, 990, 0.09, 0.2, 'triangle'); setTimeout(() => this.tone(990, 1320, 0.1, 0.18, 'triangle'), 70); }
   ping() { this.tone(1250, 1180, 1.1, 0.22, 'sine'); }
   shock() { this.noise(0.25, 3200, 6, 0.4, 'bandpass', 1200); }
+  // ----- underwater robot (Goliath): one continuous voice per robot nearby -----
+  // motor hum (two detuned saws through a lowpass), thruster wash (filtered noise) and a servo whine when turning
+  mechVoice() {
+    const ctx = this.ctx; if (!ctx) return null;
+    const out = ctx.createGain(); out.gain.value = 0; out.connect(this.master);
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 260; lp.connect(out);
+    const o1 = ctx.createOscillator(), o2 = ctx.createOscillator(); o1.type = o2.type = 'sawtooth'; o1.frequency.value = 46; o2.frequency.value = 69.5;
+    const og = ctx.createGain(); og.gain.value = 0.35; o1.connect(og); o2.connect(og); og.connect(lp);
+    const n = ctx.createBufferSource(); n.buffer = this.noiseBuf; n.loop = true;
+    const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 500; bp.Q.value = 0.9;
+    const ng = ctx.createGain(); ng.gain.value = 0; n.connect(bp).connect(ng).connect(out);
+    const sv = ctx.createOscillator(); sv.type = 'triangle'; sv.frequency.value = 900;
+    const sg = ctx.createGain(); sg.gain.value = 0; sv.connect(sg).connect(out);
+    for (const o of [o1, o2, n, sv]) o.start();
+    const t = () => ctx.currentTime;
+    return {
+      // vol 0..1 (distance), speed m/s, turn rad/s
+      set(vol, speed, turn) {
+        const k = Math.min(1, speed / 7), tc = 0.12;
+        out.gain.setTargetAtTime(vol * 0.55, t(), tc);
+        o1.frequency.setTargetAtTime(46 + k * 30, t(), 0.25); o2.frequency.setTargetAtTime(69.5 + k * 44, t(), 0.25);
+        lp.frequency.setTargetAtTime(220 + k * 380, t(), 0.2);
+        ng.gain.setTargetAtTime(0.15 + k * 0.85, t(), 0.15); bp.frequency.setTargetAtTime(380 + k * 900, t(), 0.2);
+        const tr = Math.min(1, Math.abs(turn) / 2.5);
+        sg.gain.setTargetAtTime(tr * 0.09, t(), 0.06); sv.frequency.setTargetAtTime(800 + tr * 900, t(), 0.08);
+      },
+      stop() { out.gain.setTargetAtTime(0, t(), 0.1); setTimeout(() => { for (const o of [o1, o2, n, sv]) try { o.stop(); } catch {} out.disconnect(); }, 600); },
+    };
+  }
+  // short hydraulic clunk + servo whine when a robot starts to move
+  mechStart(vol) { this.noise(0.18, 260, 1.5, 0.5 * vol, 'lowpass', 70); this.tone(700, 1500, 0.25, 0.12 * vol, 'triangle'); }
   crate() { this.noise(0.3, 500, 1, 0.4, 'lowpass', 1500); this.tone(330, 660, 0.25, 0.2, 'triangle'); }
 }

@@ -36,7 +36,7 @@ Anderer Port: `set PORT=9000` vor `node server.js`.
 - **Runde:** Absprung von der Oberfläche, Ausrüstung suchen, das *Schwarzwasser* (die Zone) zieht sich in
   sechs Phasen zusammen, der Letzte gewinnt. Dauer ca. 5 Minuten.
 - **Anzüge:** Manta (klein, schnell, 70 LP) · Triton (Allrounder, 100 LP) · Bollwerk (Panzeranzug, 150 LP) ·
-  Goliath (Mech, 240 LP, +12 % Schaden, passt in kein Fahrzeug, Oktopusse können ihn nicht halten).
+  Goliath (realistischer Unterwasser-Roboter mit Glaskuppel, Propellern, Scheinwerfern und Motorgeräuschen, 240 LP, +12 % Schaden, passt in kein Fahrzeug, Oktopusse können ihn nicht halten).
 - **Waffen:** Bolzenpistole, Nadler, Splitterwerfer, Harpune, Torpedowerfer – jeweils in vier Seltenheitsstufen.
 - **Fahrzeuge:** U-Scooter (schnell, Fahrer ungeschützt) und Mini-U-Boot (450 Rumpfpunkte, Bordtorpedos).
 - **Raubtiere:** Haie wittern Verletzte aus großer Entfernung und greifen im Vorbeischwimmen an,
@@ -88,6 +88,7 @@ public/js/main.js    Client: Netzwerk, Eingabe, Kamera, Entity-Sync
 public/js/world.js   Meeresboden, Flora, Wasser, Partikel, Zonenwand
 public/js/models.js  prozedurale Modelle (Taucher, Mech, U-Boot, Kisten, Projektile)
 public/js/creatures.js realistische Meerestiere (Fische, Haie, Krake, Rochen, Bosse)
+public/js/mech.js      Goliath-Anzug als realistischer Unterwasser-Roboter
 public/js/ship.js    das Piratenschiff des Händlers
 public/js/hud.js     HUD, Lobby, Ergebnis
 public/js/audio.js   synthetische Sounds (WebAudio)

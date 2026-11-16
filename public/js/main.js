@@ -86,6 +86,7 @@ hud.initShop((k, i) => send({ t: 'buy', k, i }), closeShop, () => { hud.closeSho
 function clearDyn() {
   dyn.clear(); players.clear(); creatures.clear(); vehicles.clear(); pickups.clear(); projs.clear(); crates = [];
   you = null; zone = null; deadInfo = null; specId = 0;
+  pruneMechVoices(true);
 }
 function onStart(m) {
   mode = m.mode || 'br';
@@ -126,7 +127,7 @@ function onSnap(m) {
   const wasAlive = you && you.alive;
   you = m.you;
   for (const a of c.p) { const e = players.get(a[0]) || spawnPlayer(a[0]); e.seen = frameNo; target(e, a, 1); e.hp = a[6]; e.fl = a[8]; e.w = e.weapon = a[9]; e.veh = a[10]; }
-  prune(players);
+  prune(players); pruneMechVoices(false);
   for (const a of c.c) {
     const type = CREATURE_IDS[a[1]];
     const e = sync(creatures, a[0], () => ({ type, sub: a[8], gold: a[10], r: creatureR(type, a[8]),
@@ -383,6 +384,26 @@ function computePrompt() {
   return best;
 }
 
+// ---------- underwater robots (Goliath): motor sound + thruster bubbles ----------
+const mechVoices = new Map();
+function mechFx(e, dt) {
+  const turn = e.lastYaw == null ? 0 : lerpAngle(0, e.yaw - e.lastYaw, 1) / Math.max(dt, 0.001);
+  e.lastYaw = e.yaw;
+  const vol = volAt(e.x, e.y, e.z) * (e.id === myId ? 0.6 : 1);
+  // bubbles from the two rear thrusters while moving
+  if (vol > 0 && e.speed > 1.5 && SURFACE - e.y > 1.5 && Math.random() < dt * (5 + e.speed * 1.5)) {
+    const f = dirFrom(e.yaw, 0), rx = Math.cos(e.yaw), rz = -Math.sin(e.yaw);
+    for (const sx of [-1, 1]) env.bubble(e.x - f[0] * 1.3 + rx * sx * 0.66, e.y + 0.25, e.z - f[2] * 1.3 + rz * sx * 0.66, 1, 0.15, 1, 0.03 + Math.random() * 0.06);
+  }
+  // one continuous motor voice per robot nearby (at most 4 at once)
+  let v = mechVoices.get(e.id);
+  if (!v && vol > 0.02 && sfx.ctx && mechVoices.size < 4) { v = sfx.mechVoice(); if (v) mechVoices.set(e.id, v); }
+  if (v) { if (vol <= 0.005) { v.stop(); mechVoices.delete(e.id); } else v.set(vol, e.speed, turn); }
+  // hydraulic clunk when it starts moving
+  if (e.speed > 2.5 && !e.moving) { e.moving = true; sfx.mechStart(vol); } else if (e.speed < 0.8) e.moving = false;
+}
+function pruneMechVoices(all) { for (const [id, v] of mechVoices) if (all || !players.has(id)) { v.stop(); mechVoices.delete(id); } }
+
 // ---------- per-frame updates ----------
 function updateEntities(dt) {
   const k = 1 - Math.exp(-dt * 14), alive = you && you.alive;
@@ -399,6 +420,7 @@ function updateEntities(dt) {
     e.mesh.visible = !(veh && veh.type === 'sub');
     e.mesh.position.set(e.x, e.y, e.z);
     e.mesh.userData.update(dt, e);
+    if (SUITS[e.suit] && SUITS[e.suit].mech) mechFx(e, dt);
     const near = e.mesh.position.distanceToSquared(camera.position);
     if (e.mesh.userData.tag) e.mesh.userData.tag.visible = near < 55 * 55;
     // breathing: every few seconds the diver exhales a cloud of bubbles from the regulator
